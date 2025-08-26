@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Notebooks / cache
+.ipynb_checkpoints/
+
+# Data & outputs (adjust as needed)
+data/
+*.csv
+*.parquet
+*.tsv
+*.json
+
+# Logs
+*.log
+
