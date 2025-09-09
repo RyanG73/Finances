@@ -51,11 +51,33 @@ outcome <- raw %>%
     Month = lubridate::month(date, label = TRUE),
     date = lubridate::floor_date(date, unit = 'month')
   ) |>
-  dplyr::filter(date >= today - 93) %>%
+  dplyr::filter(date >= '2025-01-01') %>%
   group_by(date, type) %>%
   reframe(amount = sum(amount, na.rm = T)) %>%
   arrange(type, date) |>
-  pivot_wider(names_from = 'date', values_from = 'amount')
+  pivot_wider(names_from = 'date', values_from = 'amount') |>
+  mutate(
+    want_need = ifelse(
+      type %in%
+        c(
+          'Amazon',
+          'Books',
+          'Coffee',
+          'Drinks',
+          'Eating Out',
+          'Fun',
+          'Gifts',
+          'Gym',
+          'Home Improvement',
+          'Other',
+          'Spotify',
+          'TV',
+          'Vacation'
+        ),
+      'Wants',
+      ifelse(type %in% c('Brokerage', 'Baby', 'Nest Egg'), 'Savings', 'Needs')
+    )
+  )
 
 print(outcome, n = 'all')
 # Get numeric column sums
@@ -74,6 +96,52 @@ summary_df <- data.frame(
   arrange(date)
 
 print(summary_df)
+
+long_df <- outcome %>%
+  pivot_longer(
+    cols = -c(type, want_need), # all the date columns
+    names_to = "date",
+    values_to = "amount",
+    values_drop_na = TRUE
+  ) %>%
+  mutate(date = as.Date(date)) # turn names into Date
+
+# sum by want_need for each date
+totals_by_need <- long_df %>%
+  group_by(date, want_need) %>%
+  summarise(total = sum(amount, na.rm = TRUE), .groups = "drop") |>
+  group_by(date) %>%
+  mutate(
+    month_total = sum(total, na.rm = TRUE),
+    pct = total / month_total * 100
+  ) %>%
+  ungroup()
+
+totals_by_need
+
+ggplot(
+  totals_by_need,
+  aes(x = date, y = pct, color = want_need, group = want_need)
+) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  labs(
+    title = "Monthly Spend Share",
+    x = "Month",
+    y = "Percentage of Monthly Total",
+    color = "Category"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold")
+  ) +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b'%y", # try "%b %Y" if you prefer "Jan 2025"
+    expand = expansion(mult = c(0.01, 0.03))
+  )
 
 
 three_months_ago <- last_day_this_month %m-% months(3)
