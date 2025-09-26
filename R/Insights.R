@@ -13,7 +13,7 @@ log <- readxl::read_excel(
 ) %>%
   janitor::clean_names()
 
-today <- as.Date('2025-08-31') #lubridate::today()
+today <- as.Date('2025-09-30') #lubridate::today()
 first_day_this_month <- lubridate::floor_date(today, unit = 'month')
 last_day_this_month <- lubridate::ceiling_date(today, unit = 'month') - 1
 first_day_this_year <- lubridate::floor_date(today, unit = 'year')
@@ -143,8 +143,17 @@ ggplot(
     expand = expansion(mult = c(0.01, 0.03))
   )
 
+# Ryans Income
+ryan_income <- raw %>%
+  dplyr::filter(in_out == 'In') %>%
+  dplyr::filter(name == 'Ryan') %>%
+  group_by(lubridate::year(date), lubridate::month(date), name) %>%
+  reframe(amount = sum(amount, na.rm = T))
 
-three_months_ago <- last_day_this_month %m-% months(3)
+mean(ryan_income$amount, na.rm = T)
+
+
+three_months_ago <- last_day_this_month %m-% months(6)
 # ryan Spending
 ryan_spend <- raw %>%
   filter(date > three_months_ago) |>
@@ -159,7 +168,30 @@ ryan_spend <- raw %>%
   group_by(date, type) %>%
   reframe(amount = sum(amount, na.rm = T)) %>%
   arrange(type, date) |>
-  pivot_wider(names_from = 'date', values_from = 'amount')
+  pivot_wider(names_from = 'date', values_from = 'amount') |>
+  mutate(
+    want_need = ifelse(
+      type %in%
+        c(
+          'Amazon',
+          'Books',
+          'Coffee',
+          'Drinks',
+          'Eating Out',
+          'Fun',
+          'Gifts',
+          'Gym',
+          'Home Improvement',
+          'Other',
+          'Spotify',
+          'TV',
+          'Vacation'
+        ),
+      'Wants',
+      ifelse(type %in% c('Brokerage', 'Baby', 'Nest Egg'), 'Savings', 'Needs')
+    )
+  )
+print(ryan_spend, n = 'all')
 
 # Get numeric column sums
 numeric_sums <- sapply(
@@ -177,3 +209,25 @@ summary_df <- data.frame(
   arrange(date)
 
 print(summary_df)
+
+long_df <- ryan_spend %>%
+  pivot_longer(
+    cols = -c(type, want_need), # all the date columns
+    names_to = "date",
+    values_to = "amount",
+    values_drop_na = TRUE
+  ) %>%
+  mutate(date = as.Date(date)) # turn names into Date
+
+# sum by want_need for each date
+totals_by_need <- long_df %>%
+  group_by(date, want_need) %>%
+  summarise(total = sum(amount, na.rm = TRUE), .groups = "drop") |>
+  group_by(date) %>%
+  mutate(
+    month_total = sum(total, na.rm = TRUE),
+    pct = total / month_total * 100
+  ) %>%
+  ungroup()
+
+totals_by_need |> filter(want_need == 'Wants')
