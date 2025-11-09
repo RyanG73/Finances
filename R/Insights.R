@@ -13,7 +13,7 @@ log <- readxl::read_excel(
 ) %>%
   janitor::clean_names()
 
-today <- as.Date('2025-09-30') #lubridate::today()
+today <- as.Date('2025-10-31') #lubridate::today()
 first_day_this_month <- lubridate::floor_date(today, unit = 'month')
 last_day_this_month <- lubridate::ceiling_date(today, unit = 'month') - 1
 first_day_this_year <- lubridate::floor_date(today, unit = 'year')
@@ -30,7 +30,20 @@ last_day_next_month <- lubridate::ceiling_date(
 ) -
   1
 
-missing_bills <- 0
+# MONTH IN VS. OUT
+raw %>%
+  dplyr::filter(name == 'Joint') %>%
+  dplyr::filter(primary_category == 'Checking', type != "Nest Egg") %>%
+  mutate(
+    Year = lubridate::year(date),
+    Month = lubridate::month(date, label = TRUE),
+    date = lubridate::floor_date(date, unit = 'month')
+  ) |>
+  dplyr::filter(date >= '2025-01-01') |>
+  group_by(date, in_out) %>%
+  reframe(amount = sum(amount, na.rm = T)) %>%
+  arrange(in_out, date) |>
+  pivot_wider(names_from = 'in_out', values_from = 'amount')
 
 # Joint Income
 income <- raw %>%
@@ -86,7 +99,7 @@ numeric_sums <- sapply(
   sum,
   na.rm = TRUE
 )
-
+print(numeric_sums)
 # Convert to long-format data frame with 'date' as the name column
 summary_df <- data.frame(
   date = names(numeric_sums),
@@ -153,7 +166,7 @@ ryan_income <- raw %>%
 mean(ryan_income$amount, na.rm = T)
 
 
-three_months_ago <- last_day_this_month %m-% months(6)
+three_months_ago <- last_day_this_month %m-% months(3)
 # ryan Spending
 ryan_spend <- raw %>%
   filter(date > three_months_ago) |>

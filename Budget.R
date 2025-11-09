@@ -12,7 +12,7 @@ log <- readxl::read_excel(
 ) %>%
   janitor::clean_names()
 
-today <- as.Date('2025-08-31') #lubridate::today()
+today <- as.Date('2025-10-31') #lubridate::today()
 first_day_this_month <- lubridate::floor_date(today, unit = 'month')
 last_day_this_month <- lubridate::ceiling_date(today, unit = 'month') - 1
 first_day_this_year <- lubridate::floor_date(today, unit = 'year')
